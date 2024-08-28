@@ -43,7 +43,7 @@ def start_grpc_server_ssl() -> grpc.Server:
     server_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
     server_context.minimum_version = ssl.TLSVersion.TLSv1_3
     server_context.maximum_version = ssl.TLSVersion.TLSv1_3
-    server_cert = ca.issue_cert("test-host.example.org")
+    server_cert = ca.issue_cert(SERVER)
     server_cert.configure_cert(server_context)
     server_credentials = grpc.ssl_server_credentials(
         [(server_cert.private_key_pem.bytes(), server_cert.cert_chain_pems[0].bytes())]

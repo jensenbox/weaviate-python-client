@@ -1,5 +1,6 @@
 import datetime
 import os
+import socket
 import ssl
 import time
 from abc import ABC, abstractmethod
@@ -136,16 +137,28 @@ class ConnectionParams(BaseModel):
             if enable_ssl_verification:
                 creds = ssl_channel_credentials()
             else:
-                # This does not work
-                context = ssl.SSLContext()
+                # download certificate from server. This is super hacky, but the grpc library does NOT offer a way to
+                # disable certificate verification. There are probably a number of edge cases that this does not cover.
+                context = ssl.create_default_context()
                 context.check_hostname = False
                 context.verify_mode = ssl.CERT_NONE
-                creds = ssl_channel_credentials(root_certificates=None)
+                targets = self._grpc_target.split(":")
 
-                # Disable SSL verification
-                options.append(("grpc.ssl_target_name_override", ""))
-                options.append(("grpc.default_authority", "test.invalid"))
-                options.append(("grpc.ssl_verify_peer_name", False))
+                with socket.create_connection((targets[0], int(targets[1]))) as sock:
+                    with context.wrap_socket(
+                        sock, server_hostname=self._grpc_target
+                    ) as secure_sock:
+                        cert_binary = secure_sock.getpeercert(binary_form=True)
+                        if cert_binary is None:
+                            raise ValueError(
+                                "Failed to retrieve the server certificate to bypass ssl verification."
+                            )
+
+                        cert = ssl.DER_cert_to_PEM_cert(cert_binary)
+
+                creds = ssl_channel_credentials(root_certificates=cert.encode())
+                # this assumes that the server cert has the correct hostname, which might not be the case
+                options.append(("grpc.ssl_target_name_override", targets[0]))
 
             return import_path.secure_channel(
                 target=self._grpc_target,
