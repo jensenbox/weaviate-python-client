@@ -8,12 +8,10 @@ from urllib.parse import urlparse
 import grpc  # type: ignore
 from grpc import Channel, ssl_channel_credentials
 from grpc.aio import Channel as AsyncChannel  # type: ignore
-
 from pydantic import BaseModel, field_validator, model_validator
 
 from weaviate.config import Proxies
 from weaviate.types import NUMBER
-
 
 JSONPayload = Union[dict, list]
 TIMEOUT_TYPE_RETURN = Tuple[NUMBER, NUMBER]
@@ -110,15 +108,19 @@ class ConnectionParams(BaseModel):
         return f"{self.grpc.host}:{self.grpc.port}"
 
     @overload
-    def _grpc_channel(self, async_channel: Literal[False], proxies: Dict[str, str]) -> Channel:
+    def _grpc_channel(
+        self, async_channel: Literal[False], proxies: Dict[str, str], enable_ssl_verification: bool
+    ) -> Channel:
         ...
 
     @overload
-    def _grpc_channel(self, async_channel: Literal[True], proxies: Dict[str, str]) -> AsyncChannel:
+    def _grpc_channel(
+        self, async_channel: Literal[True], proxies: Dict[str, str], enable_ssl_verification: bool
+    ) -> AsyncChannel:
         ...
 
     def _grpc_channel(
-        self, async_channel: bool, proxies: Dict[str, str]
+        self, async_channel: bool, proxies: Dict[str, str], enable_ssl_verification: bool
     ) -> Union[Channel, AsyncChannel]:
         if async_channel:
             import_path = grpc.aio
@@ -130,9 +132,13 @@ class ConnectionParams(BaseModel):
         else:
             options = GRPC_DEFAULT_OPTIONS
         if self.grpc.secure:
+            creds = ssl_channel_credentials()
+            if not enable_ssl_verification:
+                creds.options = (("grpc.ssl_target_name_override", ""),)
+
             return import_path.secure_channel(
                 target=self._grpc_target,
-                credentials=ssl_channel_credentials(),
+                credentials=creds,
                 options=options,
             )
         else:

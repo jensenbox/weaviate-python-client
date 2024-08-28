@@ -10,6 +10,7 @@ from threading import Thread, Event
 from typing import Any, Dict, Optional, Tuple, Union, cast
 from urllib.parse import urlparse
 
+import grpc  # type: ignore
 import requests
 from authlib.integrations.requests_client import OAuth2Session  # type: ignore
 from requests.adapters import HTTPAdapter
@@ -26,6 +27,7 @@ from weaviate.exceptions import (
     AuthenticationFailedException,
     WeaviateStartUpError,
 )
+from weaviate.proto.v1 import weaviate_pb2_grpc
 from weaviate.types import NUMBER
 from weaviate.util import (
     _check_positive_num,
@@ -36,12 +38,7 @@ from weaviate.util import (
     _decode_json_response_dict,
 )
 from weaviate.warnings import _Warnings
-
 from .base import _ConnectionBase, _get_proxies
-
-import grpc  # type: ignore
-from weaviate.proto.v1 import weaviate_pb2_grpc
-
 
 JSONPayload = Union[dict, list]
 Session = Union[requests.sessions.Session, OAuth2Session]
@@ -61,7 +58,6 @@ class Connection(_ConnectionBase):
         timeout_config: TIMEOUT_TYPE_RETURN,
         proxies: Union[dict, str, None],
         trust_env: bool,
-        verify: bool,
         additional_headers: Optional[Dict[str, Any]],
         startup_period: Optional[int],
         connection_config: ConnectionConfig,
@@ -93,8 +89,6 @@ class Connection(_ConnectionBase):
             or https_proxy).
             NOTE: 'proxies' has priority over 'trust_env', i.e. if 'proxies' is NOT None,
             'trust_env' is ignored.
-        verify : bool, optional
-            Whether to enable SSL verification
         additional_headers : Dict[str, Any] or None
             Additional headers to include in the requests, used to set OpenAI key. OpenAI key looks
             like this: {'X-OpenAI-Api-Key': 'KEY'}.
@@ -113,9 +107,8 @@ class Connection(_ConnectionBase):
         self.url = url  # e.g. http://localhost:80
         self.timeout_config: TIMEOUT_TYPE_RETURN = timeout_config
         self.embedded_db = embedded_db
-
+        self.__enable_ssl_verification = not connection_config.disable_ssl_verification
         self._grpc_stub: Optional[weaviate_pb2_grpc.WeaviateStub] = None
-        self._verify = verify
 
         # create GRPC channel. If weaviate does not support GRPC, fallback to GraphQL is used.
         if grcp_port is not None:
@@ -383,7 +376,7 @@ class Connection(_ConnectionBase):
             timeout=self._timeout_config,
             proxies=self._proxies,
             params=params,
-            verify=self._verify,
+            verify=self.__enable_ssl_verification,
         )
 
     def patch(
@@ -425,7 +418,7 @@ class Connection(_ConnectionBase):
             timeout=self._timeout_config,
             proxies=self._proxies,
             params=params,
-            verify=self._verify,
+            verify=self.__enable_ssl_verification,
         )
 
     def post(
@@ -469,7 +462,7 @@ class Connection(_ConnectionBase):
             timeout=self._timeout_config,
             proxies=self._proxies,
             params=params,
-            verify=self._verify,
+            verify=self.__enable_ssl_verification,
         )
 
     def put(
@@ -511,7 +504,7 @@ class Connection(_ConnectionBase):
             timeout=self._timeout_config,
             proxies=self._proxies,
             params=params,
-            verify=self._verify,
+            verify=self.__enable_ssl_verification,
         )
 
     def get(
@@ -554,7 +547,7 @@ class Connection(_ConnectionBase):
             timeout=self._timeout_config,
             params=params,
             proxies=self._proxies,
-            verify=self._verify,
+            verify=self.__enable_ssl_verification,
         )
 
     def head(
@@ -593,7 +586,7 @@ class Connection(_ConnectionBase):
             timeout=self._timeout_config,
             proxies=self._proxies,
             params=params,
-            verify=self._verify,
+            verify=self.__enable_ssl_verification,
         )
 
     @property

@@ -91,7 +91,7 @@ class _Connection(_ConnectionBase):
         timeout_config: TimeoutConfig,
         proxies: Union[str, Proxies, None],
         trust_env: bool,
-        verify: bool,
+        disable_ssl_verification: bool,
         additional_headers: Optional[Dict[str, Any]],
         connection_config: ConnectionConfig,
         embedded_db: Optional[EmbeddedV4] = None,
@@ -111,7 +111,7 @@ class _Connection(_ConnectionBase):
         self.timeout_config = timeout_config
         self.__connection_config = connection_config
         self.__trust_env = trust_env
-        self.verify = verify
+        self.enable_ssl_verification = not disable_ssl_verification
         self._weaviate_version = _ServerVersion.from_string("")
         self.__connected = False
 
@@ -194,6 +194,7 @@ class _Connection(_ConnectionBase):
                     proxy=proxy,
                     retries=self.__connection_config.session_pool_max_retries,
                     trust_env=self.__trust_env,
+                    verify=self.enable_ssl_verification,
                 )
                 for key, proxy in self._proxies.items()
                 if key != "grpc"
@@ -211,7 +212,7 @@ class _Connection(_ConnectionBase):
                     proxy=proxy,
                     retries=self.__connection_config.session_pool_max_retries,
                     trust_env=self.__trust_env,
-                    verify=self.verify,
+                    verify=self.enable_ssl_verification,
                 )
                 for key, proxy in self._proxies.items()
                 if key != "grpc"
@@ -224,7 +225,7 @@ class _Connection(_ConnectionBase):
                 None, connect=self.timeout_config.query, read=self.timeout_config.insert
             ),
             mounts=self.__make_mounts("sync"),
-            verify=self.verify,
+            verify=self.enable_ssl_verification,
         )
 
     def __make_async_client(self) -> AsyncClient:
@@ -234,7 +235,7 @@ class _Connection(_ConnectionBase):
                 None, connect=self.timeout_config.query, read=self.timeout_config.insert
             ),
             mounts=self.__make_mounts("async"),
-            verify=self.verify,
+            verify=self.enable_ssl_verification,
         )
 
     def __make_clients(self) -> None:
@@ -386,7 +387,9 @@ class _Connection(_ConnectionBase):
             self._aclient = await self.__make_async_client().__aenter__()
         if self._grpc_stub_async is None:
             self._grpc_channel_async = self._connection_params._grpc_channel(
-                async_channel=True, proxies=self._proxies
+                async_channel=True,
+                proxies=self._proxies,
+                enable_ssl_verification=self.enable_ssl_verification,
             )
             assert self._grpc_channel_async is not None
             self._grpc_stub_async = weaviate_pb2_grpc.WeaviateStub(self._grpc_channel_async)
@@ -646,7 +649,7 @@ class ConnectionV4(_Connection):
         timeout_config: TimeoutConfig,
         proxies: Union[str, Proxies, None],
         trust_env: bool,
-        verify: bool,
+        disable_ssl_verification: bool,
         additional_headers: Optional[Dict[str, Any]],
         connection_config: ConnectionConfig,
         embedded_db: Optional[EmbeddedV4] = None,
@@ -657,7 +660,7 @@ class ConnectionV4(_Connection):
             timeout_config,
             proxies,
             trust_env,
-            verify,
+            disable_ssl_verification,
             additional_headers,
             connection_config,
             embedded_db,
@@ -718,7 +721,9 @@ class ConnectionV4(_Connection):
         super().connect(skip_init_checks)
         # create GRPC channel. If Weaviate does not support GRPC then error now.
         self._grpc_channel = self._connection_params._grpc_channel(
-            async_channel=False, proxies=self._proxies
+            async_channel=False,
+            proxies=self._proxies,
+            enable_ssl_verification=self.enable_ssl_verification,
         )
         assert self._grpc_channel is not None
         self._grpc_stub = weaviate_pb2_grpc.WeaviateStub(self._grpc_channel)

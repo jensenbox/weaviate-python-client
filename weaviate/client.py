@@ -9,17 +9,15 @@ from requests.exceptions import ConnectionError as RequestsConnectionError
 
 from weaviate.backup.backup import _Backup
 from weaviate.collections.classes.internal import _GQLEntryReturnType, _RawGQLReturn
-
 from weaviate.integrations import _Integrations
-
 from .auth import AuthCredentials
 from .backup import Backup
 from .batch import Batch
 from .classification import Classification
 from .cluster import Cluster
-from .collections.collections import _Collections
 from .collections.batch.client import _BatchClientWrapper
 from .collections.cluster import _Cluster
+from .collections.collections import _Collections
 from .config import AdditionalConfig, Config
 from .connect import Connection, ConnectionV4
 from .connect.base import (
@@ -201,7 +199,7 @@ class WeaviateClient(_ClientBase[ConnectionV4]):
             connection_config=config.connection,
             proxies=config.proxies,
             trust_env=config.trust_env,
-            verify=config.verify,
+            disable_ssl_verification=config.disable_ssl_verification,
         )
 
         self.backup = _Backup(self._connection)
@@ -385,7 +383,6 @@ class Client(_ClientBase[Connection]):
         timeout_config: TIMEOUT_TYPE = (10, 60),
         proxies: Union[dict, str, None] = None,
         trust_env: bool = False,
-        verify: bool = True,
         additional_headers: Optional[dict] = None,
         startup_period: Optional[int] = None,
         embedded_options: Optional[EmbeddedOptions] = None,
@@ -451,7 +448,6 @@ class Client(_ClientBase[Connection]):
             timeout_config=_get_valid_timeout_config(timeout_config),
             proxies=proxies,
             trust_env=trust_env,
-            verify=verify,
             additional_headers=additional_headers,
             startup_period=startup_period,
             embedded_db=embedded_db,

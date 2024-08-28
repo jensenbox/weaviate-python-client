@@ -9,6 +9,7 @@ class ConnectionConfig:
     session_pool_connections: int = 20
     session_pool_maxsize: int = 100
     session_pool_max_retries: int = 3
+    disable_ssl_verification: bool = False
 
     def __post_init__(self) -> None:
         if not isinstance(self.session_pool_connections, int):
@@ -76,7 +77,7 @@ class AdditionalConfig(BaseModel):
     proxies: Union[str, Proxies, None] = Field(default=None)
     timeout_: Union[Tuple[int, int], Timeout] = Field(default_factory=Timeout, alias="timeout")
     trust_env: bool = Field(default=False)
-    verify: bool = Field(default=True)
+    disable_ssl_verification: bool = Field(default=True)
 
     @property
     def timeout(self) -> Timeout:

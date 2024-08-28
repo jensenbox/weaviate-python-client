@@ -4,6 +4,7 @@ import pytest
 from _pytest.fixtures import SubRequest
 
 import weaviate
+import weaviate.classes as wvc
 from weaviate.collections import Collection
 from weaviate.collections.classes.config import (
     Configure,
@@ -14,10 +15,8 @@ from weaviate.collections.classes.config import (
     ReferenceProperty,
     Vectorizers,
 )
-from weaviate.exceptions import WeaviateClosedClientError, WeaviateStartUpError
-import weaviate.classes as wvc
-
 from weaviate.config import Timeout
+from weaviate.exceptions import WeaviateClosedClientError, WeaviateStartUpError
 
 WCS_HOST = "piblpmmdsiknacjnm1ltla.c1.europe-west3.gcp.weaviate.cloud"
 WCS_URL = f"https://{WCS_HOST}"
@@ -485,7 +484,7 @@ def test_client_with_extra_options(timeout: Union[Tuple[int, int], Timeout]) -> 
 
 def test_client_with_verify() -> None:
     additional_config = wvc.init.AdditionalConfig(
-        timeout=Timeout(query=1, insert=2, init=2), trust_env=True, verify=False
+        timeout=Timeout(query=1, insert=2, init=2), trust_env=True, disable_ssl_verification=True
     )
     client = weaviate.connect_to_custom(
         http_secure=True,
@@ -497,7 +496,7 @@ def test_client_with_verify() -> None:
         auth_credentials=WCS_CREDS,
         additional_config=additional_config,
     )
-    assert not client._connection.verify
+    assert not client._connection.enable_ssl_verification
 
 
 def test_client_error_for_wcs_without_auth() -> None:
