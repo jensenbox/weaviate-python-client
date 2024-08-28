@@ -1,5 +1,6 @@
 import datetime
 import os
+import ssl
 import time
 from abc import ABC, abstractmethod
 from typing import Dict, Literal, Tuple, TypeVar, Union, cast, overload
@@ -132,9 +133,19 @@ class ConnectionParams(BaseModel):
         else:
             options = GRPC_DEFAULT_OPTIONS
         if self.grpc.secure:
-            creds = ssl_channel_credentials()
-            if not enable_ssl_verification:
-                creds.options = (("grpc.ssl_target_name_override", ""),)
+            if enable_ssl_verification:
+                creds = ssl_channel_credentials()
+            else:
+                # This does not work
+                context = ssl.SSLContext()
+                context.check_hostname = False
+                context.verify_mode = ssl.CERT_NONE
+                creds = ssl_channel_credentials(root_certificates=None)
+
+                # Disable SSL verification
+                options.append(("grpc.ssl_target_name_override", ""))
+                options.append(("grpc.default_authority", "test.invalid"))
+                options.append(("grpc.ssl_verify_peer_name", False))
 
             return import_path.secure_channel(
                 target=self._grpc_target,
