@@ -167,6 +167,7 @@ class _Collections:
         return Collection[Properties, References](
             self.__collections._connection,
             name,
+            loop=self.__loop,
             properties=data_model_properties,
             references=data_model_references,
             validate_arguments=not skip_argument_validation,

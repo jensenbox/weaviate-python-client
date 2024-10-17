@@ -21,12 +21,12 @@ from weaviate.collections.config import _ConfigCollection
 from weaviate.collections.data import _DataCollection
 from weaviate.collections.generate import _GenerateCollection
 from weaviate.collections.iterator import _IteratorInputs, _ObjectIterator
-from weaviate.collections.query import _QueryCollection
+from weaviate.collections.query import _QueryCollection, _QueryCollectionAsync
 from weaviate.collections.tenants import _Tenants
 from weaviate.connect import ConnectionV4
 from weaviate.types import UUID
-
 from .base import _CollectionBase
+from ...event_loop import _EventLoop
 
 
 class Collection(Generic[Properties, References], _CollectionBase[Properties, References]):
@@ -62,11 +62,14 @@ class Collection(Generic[Properties, References], _CollectionBase[Properties, Re
         connection: ConnectionV4,
         name: str,
         validate_arguments: bool,
+        loop: _EventLoop,
         consistency_level: Optional[ConsistencyLevel] = None,
         tenant: Optional[str] = None,
         properties: Optional[Type[Properties]] = None,
         references: Optional[Type[References]] = None,
     ) -> None:
+        self.__loop = loop
+
         super().__init__(
             connection,
             name,
@@ -138,6 +141,16 @@ class Collection(Generic[Properties, References], _CollectionBase[Properties, Re
             validate_arguments=validate_arguments,
         )
         """This namespace includes all the CRUD methods available to you when modifying the tenants of a multi-tenancy-enabled collection in Weaviate."""
+
+        self.__query_async = _QueryCollectionAsync[Properties, References](
+            connection=connection,
+            name=name,
+            consistency_level=consistency_level,
+            tenant=tenant,
+            properties=properties,
+            references=references,
+            validate_arguments=validate_arguments,
+        )
 
     def __len__(self) -> int:
         total = self.aggregate.over_all(total_count=True).total_count
@@ -296,7 +309,7 @@ class Collection(Generic[Properties, References], _CollectionBase[Properties, Re
                 If the request to the Weaviate server fails.
         """
         return _ObjectIterator(
-            self.query,
+            self.__query_async,
             _IteratorInputs(
                 include_vector=include_vector,
                 return_metadata=return_metadata,
@@ -304,5 +317,6 @@ class Collection(Generic[Properties, References], _CollectionBase[Properties, Re
                 return_references=return_references,
                 after=after,
             ),
+            self.__loop,
             cache_size=cache_size,
         )
