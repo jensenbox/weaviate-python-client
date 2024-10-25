@@ -246,6 +246,7 @@ class ReplicationDeletionStrategy(str, Enum):
 
     DELETE_ON_CONFLICT = "DeleteOnConflict"
     NO_AUTOMATED_RESOLUTION = "NoAutomatedResolution"
+    TIME_BASED_RESOLUTION = "TimeBasedResolution"
 
 
 class PQEncoderType(str, Enum):
